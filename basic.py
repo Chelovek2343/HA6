@@ -1,49 +1,41 @@
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import pandas as pd
+from telegram import Update, ReplyKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+import os
 
-# Read CSV data
-df = pd.read_csv('sales_data.csv')
+# === НАСТРОЙКИ ===
+TOKEN = "ТВОЙ_ТОКЕН_БОТА"
+AUTHORIZED_USER_ID = 123456789  # Замени на свой Telegram ID
 
-# Extract relevant columns
-units_sold = df['Units_Sold'].head(10)
-product_ids = df['Product_ID'].head(10)
-unit_price = df['Unit_Price'].head(10)
-total_sales = df['Total_Sales'].head(10)
+# === КНОПКИ ===
+keyboard = ReplyKeyboardMarkup(
+    [["/shutdown"]],
+    resize_keyboard=True,
+    one_time_keyboard=False
+)
 
-# Line Plot - Units Sold
-plt.plot(units_sold)
-plt.title('Line - Units Sold')
-plt.xlabel('Index')
-plt.ylabel('Units Sold')
-plt.show()
+# === ПРИВЕТСТВИЕ ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != AUTHORIZED_USER_ID:
+        await update.message.reply_text("Нет доступа.")
+        return
+    await update.message.reply_text(
+        "Привет! Нажми кнопку ниже, чтобы выключить компьютер:",
+        reply_markup=keyboard
+    )
 
-# Bar Plot - Units Sold by Product
-plt.bar(product_ids, units_sold)
-plt.title('Bar - Units Sold by Product')
-plt.xlabel('Product ID')
-plt.ylabel('Units Sold')
-plt.xticks(rotation=45)
-plt.show()
+# === ВЫКЛЮЧЕНИЕ ===
+async def shutdown_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != AUTHORIZED_USER_ID:
+        await update.message.reply_text("Нет доступа.")
+        return
+    await update.message.reply_text("Компьютер выключается...")
+    os.system("shutdown /s /t 0")
 
-# Scatter Plot - Units Sold vs Unit Price
-plt.scatter(units_sold, unit_price)
-plt.title('Scatter - Units Sold vs Unit Price')
-plt.xlabel('Units Sold')
-plt.ylabel('Unit Price')
-plt.show()
+# === ЗАПУСК БОТА ===
+app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("shutdown", shutdown_command))
+app.add_handler(MessageHandler(filters.TEXT & filters.Regex("^/shutdown$"), shutdown_command))
 
-# Pie Chart - Proportion of Units Sold
-plt.pie(units_sold, labels=product_ids, autopct='%1.1f%%')
-plt.title('Pie - Units Sold Distribution')
-plt.show()
-
-# 3D Scatter Plot
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.scatter(units_sold, unit_price, total_sales)
-ax.set_xlabel('Units Sold')
-ax.set_ylabel('Unit Price')
-ax.set_zlabel('Total Sales')
-plt.title('3D Scatter - Sales Overview')
-plt.show()
+print("Бот запущен.")
+app.run_polling()
